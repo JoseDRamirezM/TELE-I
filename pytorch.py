@@ -41,7 +41,7 @@ labels_map = {
 # VISUALIZAR DATASET
 # Se utiliza matplotlib para visualizar las imágenes del Dataset
 figure = plt.figure(figsize=(8, 8))
-cols, rows = 9, 9
+cols, rows = 5, 5
 for i in range(1, cols * rows + 1):
     sample_idx = torch.randint(len(training_data), size=(1,)).item()
     img, label = training_data[sample_idx]
@@ -61,14 +61,14 @@ train_dataloader = DataLoader(training_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
 
 for X, y in test_dataloader:
-    print(f"Shape of X [N, C, H, W]: {X.shape}")
-    print(f"Shape of y: {y.shape} {y.dtype}")
+    print(f"Forma de imagen de entrada [N, C, H, W]: {X.shape}")
+    print(f"Forma de salida: {y.shape} {y.dtype}")
     break
 
 
 # Definir un dispositivo CPU o GPU
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using {device} device")
+print(f"Usando {device}")
 
 
 # DEFINIR EL MODELO
@@ -134,7 +134,7 @@ def train(dataloader, model, loss_fn, optimizer):
         # Imprimir el valor actual de la función de pérdida
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"perdida: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 # Probar el modelo
 
@@ -156,7 +156,7 @@ def test(dataloader, model, loss_fn):
     correct /= size
     # Calculas promedios y métricas del resultado de la prueba
     print(
-        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        f"Error en prueba: \n Precision: {(100*correct):>0.1f}%, Perdida promedio: {test_loss:>8f} \n")
 
 
 # Codigo controlador
@@ -164,14 +164,14 @@ def test(dataloader, model, loss_fn):
 epochs = 5  # tercer hiperparámetro
 # Llamar las funciones para entrenar y probar el modelo
 for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
+    print(f"Epoca {t+1}\n-------------------------------")
     train(train_dataloader, model, loss_fn, optimizer)
     test(test_dataloader, model, loss_fn)
-print("Done!")
+print("Hecho")
 
 
 torch.save(model.state_dict(), "model.pth")
-print("Saved PyTorch Model State to model.pth")
+print("Modelo guardado en model.pth")
 
 # Usar el modelo para realizar predicciones
 
@@ -198,4 +198,4 @@ with torch.no_grad():
     pred = model(x)  # Dar la imagen al modelo
     predicted, actual = classes[pred[0].argmax(0)], classes[y]
     # Determinar si la predicción fue correcta
-    print(f'Predicted: "{predicted}", Actual: "{actual}"')
+    print(f'Prediccion: "{predicted}", Actual: "{actual}"')
