@@ -8,7 +8,7 @@ from torchvision.transforms import ToTensor  # Módulo para transformar datos
 import matplotlib.pyplot as plt  # Módulo para visualizar el Dataset
 
 # Cargar datos de entrenamiento de pytorch
-training_data = datasets.FashionMNIST(
+datos_entrenamiento = datasets.FashionMNIST(
     root="data",
     train=True,
     download=True,
@@ -16,7 +16,7 @@ training_data = datasets.FashionMNIST(
 )
 
 # Cargar datos de prueba de pytorch
-test_data = datasets.FashionMNIST(
+datos_prueba = datasets.FashionMNIST(
     root="data",
     train=False,
     download=True,
@@ -25,7 +25,7 @@ test_data = datasets.FashionMNIST(
 
 # Estas son las clases en las
 # que se clasifican las imágenes
-labels_map = {
+clases_map = {
     0: "T-Shirt",
     1: "Trouser",
     2: "Pullover",
@@ -40,35 +40,36 @@ labels_map = {
 
 # VISUALIZAR DATASET
 # Se utiliza matplotlib para visualizar las imágenes del Dataset
-figure = plt.figure(figsize=(8, 8))
-cols, rows = 5, 5
-for i in range(1, cols * rows + 1):
-    sample_idx = torch.randint(len(training_data), size=(1,)).item()
-    img, label = training_data[sample_idx]
-    figure.add_subplot(rows, cols, i)
-    plt.title(labels_map[label])
+figura = plt.figure(figsize=(10, 10))  # Definir el tamaño del canvas
+cols, filas = 8, 8  # Filas y columnas
+for i in range(1, cols * filas + 1):  # Llenar el canvas con las imagenes
+    # Luego tomamos imagenes aleatorias
+    muestra_id = torch.randint(len(datos_entrenamiento), size=(1,)).item()
+    img, label = datos_entrenamiento[muestra_id]
+    figura.add_subplot(filas, cols, i)
+    plt.title(clases_map[label])
     plt.axis("off")
     plt.imshow(img.squeeze(), cmap="gray")
 plt.show()
 
 
 # Primer hiperparámetro
-batch_size = 64
+# Imagenes utilizadas en una iteración
+# Iteración : numero de veces que se actualizan parámetros del modelo
+tam_lote = 64
 
-# Primer hiperparámetro
-train_dataloader = DataLoader(training_data, batch_size=batch_size)
+# Objeto que almacena los datos de entrenamiento
+entrenamiento_dataloader = DataLoader(datos_entrenamiento, batch_size=tam_lote)
 # Dataloader para datos de prueba
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
-
-for X, y in test_dataloader:
-    print(f"Forma de imagen de entrada [N, C, H, W]: {X.shape}")
-    print(f"Forma de salida: {y.shape} {y.dtype}")
-    break
+prueba_dataloader = DataLoader(datos_prueba, batch_size=tam_lote)
 
 
 # Definir un dispositivo CPU o GPU
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Usando {device}")
+
+# Se elige un dispositivo de procesamiento
+# GPU NVIDIA o CPU
+dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Usando {dispositivo}")
 
 
 # DEFINIR EL MODELO
@@ -100,77 +101,86 @@ class NeuralNetwork(nn.Module):  # clase del modelo
         return logits
 
 
-# Montar el modelo en el dispositivo
-model = NeuralNetwork().to(device)
-print(model)
+# Se pasa el modelo al dispositivo de procesamiento
+modelo = NeuralNetwork().to(dispositivo)
+print(modelo)
 
 # OPTIMIZAR LOS PARÁMETROS
 
 # Función de pérdida para calcular el error
-loss_fn = nn.CrossEntropyLoss()
+# Calula la distancia entre el resultado obtenido
+# Y el esperado
+fn_perdida = nn.CrossEntropyLoss()
 # Algoritmo de optimización de
 # gradiente descendente y segundo hiperparámetro
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+# Hiperparametro "learning rate"
+# Define que tanto modificar los parametros
+# En este caso los pesos (transformaciones) de cada neurona
+optimizador = torch.optim.SGD(modelo.parameters(), lr=1e-3)
+
 
 # Entrenar modelo
 
 
-def train(dataloader, model, loss_fn, optimizer):
-    size = len(dataloader.dataset)  # cargar datos de entrenamiento
-    model.train()  # entrenar el modelo
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)  # Obtener entradas y salidas
+def train(dataloader, modelo, fn_perdida, optimizador):
+    tam = len(dataloader.dataset)  # cargar datos de entrenamiento
+    modelo.train()  # entrenar el modelo
+    for lote, (X, y) in enumerate(dataloader):
+        # Obtener entradas y salidas
+        X, y = X.to(dispositivo), y.to(dispositivo)
 
-        # Calcular la predicción del error
-        pred = model(X)
-        loss = loss_fn(pred, y)  # calcular el error
+        # Calcular la predicción para cierta entrada (imágen)
+        pred = modelo(X)
+        perdida = fn_perdida(pred, y)  # calcular el error
 
         # Propagación inversa o Backpropagation para actualizar los pesos de
         # las neuronas
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        optimizador.zero_grad()
+        perdida.backward()
+        optimizador.step()
 
         # Imprimir el valor actual de la función de pérdida
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * len(X)
-            print(f"perdida: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        if lote % 100 == 0:
+            perdida, actual = perdida.item(), lote * len(X)
+            print(f"perdida: {perdida:>7f}  [{actual:>5d}/{tam:>5d}]")
 
 # Probar el modelo
 
 
-def test(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)  # tamaño del lote
-    model.eval()  # evaluar el modelo
-    test_loss, correct = 0, 0
+def test(dataloader, modelo, fn_perdida):
+    tam = len(dataloader.dataset)
+    num_lotes = len(dataloader)  # numero de lotes
+    modelo.eval()  # evaluar el modelo
+    test_perdida, correcto = 0, 0
     with torch.no_grad():  # desactivar el gradiente
         for X, y in dataloader:
-            X, y = X.to(device), y.to(device)  # entradas y salidas
-            pred = model(X)  # Clasificar una entrada
+            X, y = X.to(dispositivo), y.to(dispositivo)  # entradas y salidas
+            pred = modelo(X)  # Clasificar una entrada
             # Función de pérdida acumulada
-            test_loss += loss_fn(pred, y).item()
+            test_perdida += fn_perdida(pred, y).item()
             # Acumulado de aciertos en la clasificación
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
+            correcto += (pred.argmax(1) == y).type(torch.float).sum().item()
+    test_perdida /= num_lotes
+    correcto /= tam
     # Calculas promedios y métricas del resultado de la prueba
     print(
-        f"Error en prueba: \n Precision: {(100*correct):>0.1f}%, Perdida promedio: {test_loss:>8f} \n")
+        f"Test Error: \n Precision: {(100*correcto):>0.1f}%, Perdida promedio: {test_perdida:>8f} \n")
 
 
 # Codigo controlador
 
-epochs = 5  # tercer hiperparámetro
+
+epocas = 80  # tercer hiperparámetro
+# Iteraciones de aprendizaje
 # Llamar las funciones para entrenar y probar el modelo
-for t in range(epochs):
+for t in range(epocas):
     print(f"Epoca {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    test(test_dataloader, model, loss_fn)
+    train(entrenamiento_dataloader, modelo, fn_perdida, optimizador)
+    test(prueba_dataloader, modelo, fn_perdida)
 print("Hecho")
 
 
-torch.save(model.state_dict(), "model.pth")
+torch.save(modelo.state_dict(), "model.pth")
 print("Modelo guardado en model.pth")
 
 # Usar el modelo para realizar predicciones
@@ -192,10 +202,19 @@ classes = [
     "Ankle boot",
 ]
 
-model.eval()  # evaluar el modelo con la entrada actual
-x, y = test_data[0][0], test_data[0][1]  # la imagen y su clase
-with torch.no_grad():
-    pred = model(x)  # Dar la imagen al modelo
-    predicted, actual = classes[pred[0].argmax(0)], classes[y]
-    # Determinar si la predicción fue correcta
-    print(f'Prediccion: "{predicted}", Actual: "{actual}"')
+modelo.eval()  # evaluar el modelo con la entrada actual
+
+correctos = 0
+# Probar las predicciones con 1000 imagenes del dataset
+for i in range(0, 1000):
+    # la imagen y su clase
+    x, y = datos_entrenamiento[i][0], datos_prueba[i][1]
+    with torch.no_grad():
+        pred = modelo(x)  # Dar la imagen al modelo
+        predic, actual = classes[pred[0].argmax(0)], classes[y]
+        if predic == actual:
+            correctos += 1
+        # Determinar si la predicción fue correcta
+        print(f'Prediccion: "{predic}", Actual: "{actual}"')
+
+print(f'Total correctos: "{correctos}"')
