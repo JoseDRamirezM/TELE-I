@@ -185,8 +185,8 @@ print("Modelo guardado en model.pth")
 
 # Usar el modelo para realizar predicciones
 
-model = NeuralNetwork()
-model.load_state_dict(torch.load("model.pth"))
+modelo = NeuralNetwork()
+modelo.load_state_dict(torch.load("model.pth"))
 
 # Cada clase correspondiente a las imágenes del dataset
 classes = [
